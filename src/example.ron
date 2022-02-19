@@ -1,0 +1,11 @@
+[
+    Info("Hello"),
+    Variable("test", Literal("hi")),
+    Info("%(test) is the variable"),
+    Confirm("Run more stuff? [yN]", [
+        Info("Running more stuff"),
+    ], [
+        Info("No")
+    ]),
+    Run("echo hello")
+]
