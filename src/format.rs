@@ -13,7 +13,8 @@ pub enum Step {
     Info(String),
     Confirm(String, Vec<Step>, Vec<Step>),
     ConfirmFile(String, Vec<Step>, Vec<Step>),
-    Variable(String, VarValue)
+    Variable(String, VarValue),
+    Cancel
 }
 
 #[derive(Debug, Serialize, Deserialize)]

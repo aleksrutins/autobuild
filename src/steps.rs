@@ -1,4 +1,4 @@
-use std::{process::{Command, Stdio}, io::{self, Read}, fs::File};
+use std::{process::{Command, Stdio, exit}, io::{self, Read}, fs::File};
 use lazy_static::{lazy_static, __Deref};
 use regex::{Regex, Captures};
 use std::collections::HashMap;
@@ -75,7 +75,11 @@ pub fn run(step: &Step, state: HashMap<String, String>) -> HashMap<String, Strin
                 Ok(str) => str.trim().to_string(),
                 Err(_) => "".to_string()
             },
-        });}
+        });},
+        Step::Cancel => {
+            console::log_err("Aborting.");
+            exit(1);
+        }
     };
     mut_state.to_owned()
 }
