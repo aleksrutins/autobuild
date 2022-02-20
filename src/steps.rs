@@ -27,7 +27,7 @@ fn run_command_output(cmd: &String) -> Result<String, io::Error> {
             .output().and_then(|val| Ok(String::from_utf8(val.stdout).expect("Could not convert command output to string")))
 }
 
-pub fn run(step: Step, state: HashMap<String, String>) -> HashMap<String, String> {
+pub fn run(step: &Step, state: HashMap<String, String>) -> HashMap<String, String> {
     lazy_static! {
         static ref VAR_REGEX: Regex = Regex::new(r"%\((?P<name>.*?)\)").unwrap();
     }
@@ -65,14 +65,14 @@ pub fn run(step: Step, state: HashMap<String, String>) -> HashMap<String, String
             },
             Err(_e) => run_all(if_not_exists)
         },
-        Step::Variable(name, value) => {mut_state.insert(name, match value {
-            VarValue::Literal(val) => val,
+        Step::Variable(name, value) => {mut_state.insert(name.to_string(), match value {
+            VarValue::Literal(val) => val.to_string(),
             VarValue::CommandResult(cmd) => match run_command_output(&cmd) {
-                Ok(str) => str,
+                Ok(str) => str.trim().to_string(),
                 Err(_) => "".to_string()
             },
             VarValue::Cores() => match run_command_output(&String::from("nproc")) {
-                Ok(str) => str,
+                Ok(str) => str.trim().to_string(),
                 Err(_) => "".to_string()
             },
         });}
@@ -80,7 +80,7 @@ pub fn run(step: Step, state: HashMap<String, String>) -> HashMap<String, String
     mut_state.to_owned()
 }
 
-pub fn run_all_state(steps: Vec<Step>, initial_state: &HashMap<String, String>) -> HashMap<String, String> {
+pub fn run_all_state(steps: &Vec<Step>, initial_state: &HashMap<String, String>) -> HashMap<String, String> {
     let mut state = initial_state.to_owned();
     for step in steps {
         state = run(step, state);
@@ -88,6 +88,6 @@ pub fn run_all_state(steps: Vec<Step>, initial_state: &HashMap<String, String>) 
     state.to_owned()
 }
 
-pub fn run_all(steps: Vec<Step>) {
+pub fn run_all(steps: &Vec<Step>) {
     run_all_state(steps, &HashMap::new());
 }

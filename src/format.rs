@@ -15,3 +15,10 @@ pub enum Step {
     ConfirmFile(String, Vec<Step>, Vec<Step>),
     Variable(String, VarValue)
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Configuration {
+    name: String,
+    provides: String,
+    steps: Vec<Step>
+}
