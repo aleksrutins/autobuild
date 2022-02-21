@@ -1,10 +1,10 @@
-use std::{collections::HashMap, fs::{self, File}, hash::Hash, io::{Read, self}, env};
+use std::{collections::HashMap, fs::{self, File}};
 
 use serde::{Serialize, Deserialize};
 use walkdir::WalkDir;
 use lazy_static::lazy_static;
 
-use crate::{format::{Step, Configuration}, console, fs_utils::read_file};
+use crate::{format::{Step}, console, fs_utils::read_file};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Recipe {
@@ -14,11 +14,38 @@ pub struct Recipe {
     pub steps: Vec<Step>
 }
 
-lazy_static! {
-    pub static ref CONFIG_DIR: String = dirs::config_dir().expect("Could not get config dir").to_str().expect("Could not convert path to string").to_string() + "/autobuild";
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserConfig {
+    pub proxy_url: String,
+    pub defaults: HashMap<String, String>
 }
 
-pub fn config_dir(subdir: &str) -> String { CONFIG_DIR.to_string() + "/" + subdir }
+lazy_static! {
+    pub static ref CONFIG_DIR: String = dirs::config_dir().expect("Could not get config dir").to_str().expect("Could not convert path to string").to_string() + "/autobuild";
+    pub static ref DEFAULT_CONFIG: UserConfig = UserConfig {
+        proxy_url: "https://autobuild-proxy-production.up.railway.app".to_string(),
+        defaults: HashMap::new()
+    };
+}
+
+pub fn config_dir(subpath: &str) -> String { CONFIG_DIR.to_string() + "/" + subpath }
+
+pub fn get_user_config() -> UserConfig {
+    if let Err(_) = fs::read_dir(CONFIG_DIR.to_string()) {
+        console::log_info(&format!("Creating configuration directory {}", CONFIG_DIR.to_string()));
+        if let Err(_) = fs::create_dir_all(CONFIG_DIR.to_string()) {
+            panic!("Could not create configuration directory")
+        }
+    };
+    if let Ok(result) = fs::read(config_dir("config.ron")) {
+        match ron::from_str::<UserConfig>(String::from_utf8(result).expect("Could not convert user config to string").as_str()) {
+            Ok(config) => config,
+            Err(_) => (*DEFAULT_CONFIG).clone()
+        }
+    } else {
+        (*DEFAULT_CONFIG).clone()
+    }
+}
 
 pub fn get_installed_recipes() -> HashMap<String, Vec<Recipe>> {
     let recipes_dir = &config_dir("recipes");
@@ -54,7 +81,9 @@ pub fn get_installed_recipes() -> HashMap<String, Vec<Recipe>> {
         }
         Err(_) => {
             console::log_info(&format!("Creating configuration directory {}", recipes_dir));
-            fs::create_dir_all(recipes_dir);
+            if let Err(_) = fs::create_dir_all(recipes_dir) {
+                console::log_err("Error creating configuration directory");
+            }
             HashMap::new()
         }
     }

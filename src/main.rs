@@ -4,9 +4,12 @@ mod console;
 mod config;
 mod fs_utils;
 
+use std::{fs::File, io::{Error, ErrorKind, Write}};
+
 use crate::steps::run_all;
 use clap::{Parser, Subcommand};
-use config::get_installed_recipes;
+use config::{get_installed_recipes, get_user_config};
+use ron::ser::PrettyConfig;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -23,18 +26,34 @@ enum Commands {
     Default {
         recipe: String
     },
-    Config
+    Config,
+    GenConfig
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
+    let config = get_user_config();
 
     match &cli.command {
         Commands::Default { recipe } => {
-
+            if let Some(default) = config.defaults.get(recipe) {
+                println!("{}", default);
+            } else {
+                console::log_info(&format!("No default set for {}", recipe));
+            }
         },
         Commands::Config => {
             println!("{}", config::CONFIG_DIR.to_string());
+        },
+        Commands::GenConfig => {
+            if let Ok(_) = File::open(config::config_dir("config.ron")) {
+                let response = console::question("The user configuration file already exists; overwrite? [yN]");
+                if response != "y" {
+                    return Ok(())
+                }
+            }
+            let mut file = File::create(config::config_dir("config.ron"))?;
+            file.write_all(ron::ser::to_string_pretty(&(*config::DEFAULT_CONFIG), PrettyConfig::new()).expect("Could not serialize configuration").as_bytes())?;
         },
         Commands::Run { requirement } => {
             let recipes = get_installed_recipes();
@@ -49,11 +68,11 @@ fn main() {
                         run_all(&recipe.steps);
                     } else {
                         console::log_err("Please enter a valid index.");
-                        return
+                        return Err(Error::new(ErrorKind::Other, "Please enter a valid index."));
                     }
                 } else {
                     console::log_err("Please enter a number.");
-                    return
+                    return Err(Error::new(ErrorKind::Other, "Please enter a number."));
                 }
                 
             } else {
@@ -61,4 +80,5 @@ fn main() {
             }
         }
     }
+    Ok(())
 }
